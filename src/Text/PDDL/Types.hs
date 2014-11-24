@@ -2,6 +2,8 @@
 
 module Text.PDDL.Types where
 
+import           Text.PDDL.Location
+
 import qualified Data.Text as S
 
 
@@ -14,9 +16,9 @@ type Pred = Name
 
 type Var  = S.Text
 
-data Domain = Domain { dName     :: Name
-                     , dRequires :: [Requirement]
-                     , dTypes    :: TypedList Name
+data Domain = Domain { dName     :: Located Name
+                     , dRequires :: [Located Requirement]
+                     , dTypes    :: TypedList (Located Name)
                      , dConsts   :: TypedList Name
                      , dPredSigs :: [PredSig]
                      , dFuns     :: TypedList Function
@@ -56,7 +58,7 @@ data TypedList a = UntypedList [a]
                  | TypedList [Typed a]
                    deriving (Show,Functor)
 
-data Typed a = Typed { tType :: Type
+data Typed a = Typed { tType :: Located Type
                      , tVal  :: a
                      } deriving (Show,Functor)
 
