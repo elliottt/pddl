@@ -1,0 +1,3 @@
+:set -XOverloadedStrings
+:cd src
+:set -i../dist/build
