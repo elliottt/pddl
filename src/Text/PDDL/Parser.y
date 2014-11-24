@@ -8,7 +8,7 @@
 module Text.PDDL.Parser where
 
 import           Text.PDDL.Core ( Parser, lexer, parseError )
-import           Text.PDDL.Lexer ( Lexeme, Token(..), Keyword(..) )
+import           Text.PDDL.Lexer ( Lexeme, Token(..), Symbol(..) )
 import           Text.PDDL.Location ( Located(..), at, unLoc )
 import qualified Text.PDDL.Types as T
 
@@ -22,41 +22,40 @@ import Debug.Trace
 %token
 
   -- s-expressions
-  '(' { Located $$ (TKeyword Klparen) }
-  ')' { Located $$ (TKeyword Krparen) }
-  '-' { Located $$ (TKeyword Kdash)   }
+  ')' { Located $$ TEnd  }
+  '-' { Located $$ TDash }
 
   -- keywords
-  'define'        { Located $$ (TName "define")       }
-  'domain'        { Located $$ (TName "domain")       }
-  ':requirements' { Located $$ (TSym  "requirements") }
-  ':types'        { Located $$ (TSym  "types")        }
-  'either'        { Located $$ (TName "either")       }
+  '(define'        { Located $$ (TBegin (SName "define"))       }
+  '(domain'        { Located $$ (TBegin (SName "domain"))       }
+  '(:requirements' { Located $$ (TBegin (SSym  "requirements")) }
+  '(:types'        { Located $$ (TBegin (SSym  "types"))        }
+  '(either'        { Located $$ (TBegin (SName "either"))       }
 
   -- requirements
-  ':strips'                    { Located $$ (TSym "strips")                    }
-  ':typing'                    { Located $$ (TSym "typing")                    }
-  ':negative-preconditions'    { Located $$ (TSym "negative-preconditions")    }
-  ':disjunctive-preconditions' { Located $$ (TSym "disjunctive-preconditions") }
-  ':equality'                  { Located $$ (TSym "equality")                  }
-  ':existential-preconditions' { Located $$ (TSym "existential-preconditions") }
-  ':universal-preconditions'   { Located $$ (TSym "universal-preconditions")   }
-  ':conditional-effects'       { Located $$ (TSym "conditional-effects")       }
-  ':fluents'                   { Located $$ (TSym "fluents")                   }
-  ':numeric-fluents'           { Located $$ (TSym "numeric-fluents")           }
-  ':object-fluents'            { Located $$ (TSym "object-fluents")            }
-  ':adl'                       { Located $$ (TSym "adl")                       }
-  ':durative-actions'          { Located $$ (TSym "durative-actions")          }
-  ':duration-inequalities'     { Located $$ (TSym "duration-inequalities")     }
-  ':continuous-effects'        { Located $$ (TSym "continuous-effects")        }
-  ':derived-predicates'        { Located $$ (TSym "derived-predicates")        }
-  ':timed-initial-literals'    { Located $$ (TSym "timed-initial-literals")    }
-  ':preferences'               { Located $$ (TSym "preferences")               }
-  ':constraints'               { Located $$ (TSym "constraints")               }
-  ':action-costs'              { Located $$ (TSym "action-costs")              }
+  ':strips'                    { Located $$ (TSymbol (SSym "strips"))                    }
+  ':typing'                    { Located $$ (TSymbol (SSym "typing"))                    }
+  ':negative-preconditions'    { Located $$ (TSymbol (SSym "negative-preconditions"))    }
+  ':disjunctive-preconditions' { Located $$ (TSymbol (SSym "disjunctive-preconditions")) }
+  ':equality'                  { Located $$ (TSymbol (SSym "equality"))                  }
+  ':existential-preconditions' { Located $$ (TSymbol (SSym "existential-preconditions")) }
+  ':universal-preconditions'   { Located $$ (TSymbol (SSym "universal-preconditions"))   }
+  ':conditional-effects'       { Located $$ (TSymbol (SSym "conditional-effects"))       }
+  ':fluents'                   { Located $$ (TSymbol (SSym "fluents"))                   }
+  ':numeric-fluents'           { Located $$ (TSymbol (SSym "numeric-fluents"))           }
+  ':object-fluents'            { Located $$ (TSymbol (SSym "object-fluents"))            }
+  ':adl'                       { Located $$ (TSymbol (SSym "adl"))                       }
+  ':durative-actions'          { Located $$ (TSymbol (SSym "durative-actions"))          }
+  ':duration-inequalities'     { Located $$ (TSymbol (SSym "duration-inequalities"))     }
+  ':continuous-effects'        { Located $$ (TSymbol (SSym "continuous-effects"))        }
+  ':derived-predicates'        { Located $$ (TSymbol (SSym "derived-predicates"))        }
+  ':timed-initial-literals'    { Located $$ (TSymbol (SSym "timed-initial-literals"))    }
+  ':preferences'               { Located $$ (TSymbol (SSym "preferences"))               }
+  ':constraints'               { Located $$ (TSymbol (SSym "constraints"))               }
+  ':action-costs'              { Located $$ (TSymbol (SSym "action-costs"))              }
 
-  NAME { $$ @ (Located _  (TName _))   }
-  VAR  { $$ @ (Located _  (TVar _))    }
+  NAME { $$ @ (Located _  (TSymbol (SName _)))   }
+  VAR  { $$ @ (Located _  (TSymbol (SVar _)))    }
 
 
 %monad     { Parser } { (>>=) } { return }
@@ -89,14 +88,14 @@ problem :: { T.Problem }
 -- Domains ---------------------------------------------------------------------
 
 domain :: { T.Domain }
-  : '(' 'define'
-        '(' 'domain' name ')'
+  : '(define'
+        '(domain' name ')'
         require_def
         types_def
     ')'
-     { T.Domain { T.dName     = $5
-                , T.dRequires = $7
-                , T.dTypes    = $8
+     { T.Domain { T.dName     = $3
+                , T.dRequires = $5
+                , T.dTypes    = $6
                 , T.dConsts   = T.UntypedList []
                 , T.dPredSigs = []
                 , T.dFuns     = T.UntypedList []
@@ -109,8 +108,8 @@ domain :: { T.Domain }
 -- Requirements ----------------------------------------------------------------
 
 require_def :: { [Located T.Requirement] }
-  : '(' ':requirements' list1(require_key) ')' { $3 }
-  | {- empty -}                                { [] }
+  : '(:requirements' list1(require_key) ')' { $2 }
+  | {- empty -}                             { [] }
 
 require_key :: { Located T.Requirement }
   : ':strips'                    { T.ReqStrips                   `at` $1 }
@@ -138,8 +137,8 @@ require_key :: { Located T.Requirement }
 -- Types -----------------------------------------------------------------------
 
 types_def :: { T.TypedList (Located T.Name) }
-  : '(' ':types' typed_list(name) ')' { $3               }
-  | {- empty -}                       { T.UntypedList [] }
+  : '(:types' typed_list(name) ')' { $2               }
+  | {- empty -}                    { T.UntypedList [] }
 
 typed_list(p)
   : list1(p)        { T.UntypedList $1        }
@@ -149,14 +148,14 @@ typed(p)
   : list1(p) '-' type { [ T.Typed $3 v | v <- $1 ] }
 
 type :: { Located T.Type }
-  : name                         { T.Type `fmap` $1 }
-  | '(' 'either' list1(name) ')' { T.Either (map unLoc $3) `at` mconcat [$1,$4] }
+  : name                      { T.Type `fmap` $1 }
+  | '(either' list1(name) ')' { T.Either (map unLoc $2) `at` mconcat [$1,$3] }
 
 
 -- Utilities -------------------------------------------------------------------
 
 name :: { Located T.Name }
-  : NAME { let Located loc (TName n) = $1
+  : NAME { let Located loc (TSymbol (SName n)) = $1
             in Located loc n }
 
 list(p)

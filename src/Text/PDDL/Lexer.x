@@ -8,7 +8,7 @@
 
 module Text.PDDL.Lexer (
     Token(..)
-  , Keyword(..)
+  , Symbol(..)
   , Lexeme
   , scan
   ) where
@@ -40,12 +40,14 @@ $lowerletter = [a-z]
 $white          ;
 ";".*$          ;
 
--- reserved symbols
-"("             { keyword Klparen     }
-")"             { keyword Krparen     }
-"-"             { keyword Kdash       }
+-- begin/end
+")"                  { emitT TEnd  }
+"-"                  { emitT TDash }
+"(" $white*    @name { emitS begName }
+"(" $white* \? @name { emitS begVar  }
+"(" $white* \: @name { emitS begSym  }
 
-@name                { emitS (TName . S.pack) }
+@name                { emitS (TSymbol . SName . S.pack) }
 \? @name             { emitS mkVar            }
 \: @name             { emitS mkSym            }
 $digit+              { emitS (TNum  . read)   }
@@ -164,19 +166,19 @@ alexGetInput  = Lexer get
 
 type Lexeme = Located Token
 
-data Token = TKeyword Keyword
-           | TName !S.Text
-           | TVar !S.Text
-           | TSym !S.Text
+data Token = TSymbol Symbol
+           | TBegin Symbol
+           | TEnd
+           | TDash
            | TNum !Double
            | TError String
            | TEof
              deriving (Show)
 
-data Keyword = Klparen
-             | Krparen
-             | Kdash
-               deriving (Show)
+data Symbol = SName !S.Text
+            | SVar !S.Text
+            | SSym !S.Text
+              deriving (Show)
 
 
 type AlexAction result = AlexInput -> Int -> result
@@ -191,14 +193,26 @@ emitS mk li len = return (Just $! Located (mkRange li str) (mk str))
   range = mkRange li str
   str   = L.unpack (L.take (fromIntegral len) (liInput li))
 
-keyword :: Keyword -> AlexAction (Lexer (Maybe Lexeme))
-keyword kw = emitT (TKeyword kw)
+begName :: String -> Token
+begName str = TBegin (SName (S.pack name))
+  where
+  name = dropWhile (`elem` "( \t\r\n") str
+
+begVar :: String -> Token
+begVar str = TBegin (SVar (S.pack var))
+  where
+  _ : var = dropWhile (/= '?') str
+
+begSym :: String -> Token
+begSym str = TBegin (SSym (S.pack sym))
+  where
+  _ : sym = dropWhile (/= ':') str
 
 mkVar :: String -> Token
-mkVar (_:str) = TVar (S.pack str)
+mkVar (_:str) = TSymbol (SVar (S.pack str))
 
 mkSym :: String -> Token
-mkSym (_:str) = TSym (S.pack str)
+mkSym (_:str) = TSymbol (SSym (S.pack str))
 
 }
 
