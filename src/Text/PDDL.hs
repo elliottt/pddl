@@ -1,16 +1,17 @@
 module Text.PDDL (
     module Text.PDDL
   , module Text.PDDL.Types
-  , Error(..)
+  , SrcLoc(..)
+  , Located(..)
+  , ParseError(..)
   ) where
 
-import           Text.PDDL.Core ( runParser, Error(..) )
-import           Text.PDDL.Lexer ( scan )
-import           Text.PDDL.Parser ( parsePddl )
+import           Text.PDDL.Location ( Source, SrcLoc(..), Located(..) )
+import           Text.PDDL.SExp ( ParseError(..) )
 import           Text.PDDL.Types
 
 import qualified Data.Text.Lazy as L
 
 
-parseText :: String -> L.Text -> Either Error [PDDL]
-parseText src bytes = runParser (scan src bytes) parsePddl
+parseText :: Source -> L.Text -> Either ParseError [PDDL]
+parseText src bytes = undefined

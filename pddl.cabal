@@ -17,10 +17,8 @@ library
   exposed-modules:     Text.PDDL
                        Text.PDDL.Location
                        Text.PDDL.PP
+                       Text.PDDL.SExp
                        Text.PDDL.Types
-  other-modules:       Text.PDDL.Core
-                       Text.PDDL.Lexer
-                       Text.PDDL.Parser
   build-depends:       base >=4.7 && <5,
                        text,
                        bytestring,
