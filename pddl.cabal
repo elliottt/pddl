@@ -17,6 +17,7 @@ library
   exposed-modules:     Text.PDDL
                        Text.PDDL.Location
                        Text.PDDL.PP
+                       Text.PDDL.Parse
                        Text.PDDL.SExp
                        Text.PDDL.Types
   build-depends:       base >=4.7 && <5,

@@ -13,7 +13,9 @@ import           Text.PDDL.Location
                      ( Source, SrcLoc(..), Position(..), Range(..)
                      , Located(..), movePos, at )
 import           Text.PDDL.PP
-                     ( PP(..), text, (<+>), sep, (<>), doubleQuotes )
+                     ( PP(..), Doc, text, (<+>), sep, (<>), doubleQuotes
+                     , isEmpty )
+import qualified Text.PDDL.PP as PP
 
 import           Control.Monad ( unless )
 import           Data.Char ( isSpace, isNumber, isLetter, isSymbol )
@@ -49,11 +51,14 @@ instance PP SExp where
   pp (SString s) = doubleQuotes (pp s)
   pp (SLoc loc)  = pp loc
 
-data ParseError = ParseError SrcLoc
+data ParseError = ParseError SrcLoc Doc
                   deriving (Show)
 
 instance PP ParseError where
-  pp (ParseError loc) = text "Parse error near:" <+> pp loc
+  pp (ParseError loc msg) = pp loc <> PP.char ':' <+> body
+    where
+    body | isEmpty msg = text "Parse error"
+         | otherwise   = msg
 
 
 -- | Parse an s-expression from a lazy ByteString, with source information.
@@ -61,7 +66,7 @@ parseSExp :: Source -> L.Text -> Either ParseError SExp
 parseSExp src inp =
   case runM (unParser sexp) rw of
     Right (a,_) -> Right a
-    Left pos    -> Left (ParseError (SrcLoc (Range pos pos) src))
+    Left err    -> Left err
 
   where
   rw = RW { rwInput = inp, rwSource = src, rwPos = Position 0 1 1 }
@@ -69,7 +74,7 @@ parseSExp src inp =
 
 -- Parser ----------------------------------------------------------------------
 
-newtype Parser a = Parser { unParser :: StateT RW (ExceptionT Position Id) a
+newtype Parser a = Parser { unParser :: StateT RW (ExceptionT ParseError Id) a
                           } deriving (Functor,Applicative,Monad)
 
 data RW = RW { rwInput  :: L.Text
@@ -92,7 +97,8 @@ peek  = Parser $
   do RW { .. } <- get
      case L.uncons rwInput of
        Just (c,_) -> return c
-       Nothing    -> raise rwPos
+       Nothing    -> raise $ ParseError (SrcLoc (Range rwPos rwPos) rwSource)
+                                        (text "Unexpected end of input")
 
 char :: Parser Char
 char  = Parser $
@@ -103,7 +109,8 @@ char  = Parser $
                                      , ..
                                      }
                            return c
-       Nothing       -> raise rwPos
+       Nothing       -> raise $ ParseError (SrcLoc (Range rwPos rwPos) rwSource)
+                                           (text "Unexpected end of input")
 
 -- | Consume until the next character begins something interesting.  As this
 -- will fail if it doesn't find anything interesting, it should only be used in
@@ -176,8 +183,6 @@ nameBody l =
                        rest <- loop
                        return (c:rest)
                else return ""
-
-  symbolChars = ['a' .. 'z'] ++ ['A' .. 'Z'] ++ ['0' .. '9'] ++ ":-_"
 
 number :: Parser String
 number  =
